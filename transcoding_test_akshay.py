@@ -23,7 +23,7 @@ class Transcoding_MAM:
         self.file_path = ""
         
     def make_create_dir(self, user_input):
-        os.chdir(self.parent_directory)
+        os.chdir(self.path)
         print(user_input)
 #         print(os.getcwd())
         p = Path('processing/')
@@ -152,20 +152,26 @@ class Transcoding_MAM:
                 os.remove(self.parent_directory + "/" + "done" + '/' + output_file.split('/')[-1])
                 shutil.move(output_file, self.parent_directory + "/" +  "done")
         else:
+            self.file_processing_status = "ERROR"
             try:
                 statinfo_size = os.stat(output_file).st_size
                 if statinfo_size is 0:
-                    
-            
-            self.file_processing_status = "ERROR"
-        
+                    try:
+                        shutil.move(output_file, self.parent_directory + "/" +"error")
+                    except:
+                        os.remove(self.parent_directory + "/" + "error" + '/' + output_file.split('/')[-1])
+                        shutil.move(output_file, self.parent_directory + "/" +  "error")
+            except:
+                pass
     def add_fileprofile(self, file, file_profile, duration):
         temp = []
         temp.append(file.split("/")[-1])
         temp.append(file_profile)
         temp.append(duration)
         temp.append(self.file_processing_status)
+        print(temp)
         self.file_info.append(temp)
+        print(self.file_info)
     
     def dest_files(self):
         if self.extension is "*":
@@ -234,10 +240,22 @@ class Transcoding_MAM:
                 print("Cannot process file, Error logged.")
         
             self.add_fileprofile(file,file_profile,duration)
-            
+            # self.write_output()
     def write_output(self):
-        data = pd.DataFrame(self.file_info, columns=["Filename", "Profile", "Duration", "Status"])
-        data.to_csv('out.csv',mode = 'a',  index = False)
+        try:
+
+            print(self.file_info)
+            Path('out.csv').exists()
+            data = pd.read_csv('out.csv')
+            data_temp = pd.DataFrame(self.file_info, columns=data.columns)
+            data = data.append(data_temp)
+            data.to_csv('out.csv', index = False)
+        except:
+
+            data = pd.DataFrame(self.file_info, columns=["Filename", "Profile", "Duration", "Status"])
+            data.to_csv('out.csv', index = False)
+
+        
     
     def check_extension(self, extension):
         if extension in self.extension_allowed:
@@ -255,6 +273,7 @@ class MyEventHandler(pyinotify.ProcessEvent):
             transcod_obj.file_path = event.pathname 
             transcod_obj.make_create_dir(transcod_obj.path)
             transcod_obj.Transcoding()
+            print("calling outout")
             transcod_obj.write_output()
             os.chdir(transcod_obj.parent_directory)
 
